@@ -1,6 +1,6 @@
 train:
   data_object: # name of the tensor on which we apply transform
-    _target_: torchvision.transforms.v2.Compose
+    _target_: torchvision.transforms.Compose
     transforms:
       - _target_: src.transforms.RandomScale1D
 inference: null

@@ -1,0 +1,29 @@
+defaults:
+  - _self_
+
+instance_transforms:
+  train:
+    data_object:  # Важно: используем data_object как ключ!
+      _target_: torch.nn.Sequential
+      _args_:
+        - _target_: src.transforms.stft_transform.AudioNormalize
+          method: "instance"
+        - _target_: src.transforms.stft_transform.STFTTransform
+          n_fft: 512
+          hop_length: 128
+          win_length: 512
+
+  inference:
+    data_object:  # Важно: используем data_object как ключ!
+      _target_: torch.nn.Sequential
+      _args_:
+        - _target_: src.transforms.stft_transform.AudioNormalize
+          method: "instance"
+        - _target_: src.transforms.stft_transform.STFTTransform
+          n_fft: 512
+          hop_length: 128
+          win_length: 512
+
+batch_transforms:
+  train: null
+  inference: null

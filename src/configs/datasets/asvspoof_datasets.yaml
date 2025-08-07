@@ -1,0 +1,23 @@
+train:
+  _target_: src.datasets.ExampleDataset
+  data_dir: "data/ASVspoof2019_LA_train/flac"
+  protocol_file: "data/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt"
+  partition: "train"
+  max_length: 64000
+  instance_transforms: ${transforms.instance_transforms.train}
+
+val:
+  _target_: src.datasets.ExampleDataset
+  data_dir: "data/ASVspoof2019_LA_dev/flac"
+  protocol_file: "data/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.dev.trl.txt"
+  partition: "dev"
+  max_length: 64000
+  instance_transforms: ${transforms.instance_transforms.inference}
+
+test:
+  _target_: src.datasets.ExampleDataset
+  data_dir: "data/ASVspoof2019_LA_eval/flac"
+  protocol_file: "data/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.eval.trl.txt"
+  partition: "eval"
+  max_length: 64000
+  instance_transforms: ${transforms.instance_transforms.inference}

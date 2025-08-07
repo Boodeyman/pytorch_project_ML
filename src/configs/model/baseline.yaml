@@ -1,4 +1,4 @@
 _target_: src.model.BaselineModel
-n_feats: 1024
-fc_hidden: 512
-n_class: 10
+n_feats: 257    # n_fft//2 + 1 для STFT
+n_class: 2      # bonafide vs spoof
+dropout: 0.75   # как в STC paper

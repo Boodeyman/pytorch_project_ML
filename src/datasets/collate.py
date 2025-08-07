@@ -3,23 +3,42 @@ import torch
 
 def collate_fn(dataset_items: list[dict]):
     """
-    Collate and pad fields in the dataset items.
-    Converts individual items into a batch.
-
-    Args:
-        dataset_items (list[dict]): list of objects from
-            dataset.__getitem__.
-    Returns:
-        result_batch (dict[Tensor]): dict, containing batch-version
-            of the tensors.
+    Collate function для ASVspoof dataset с поддержкой спектрограмм
     """
-
     result_batch = {}
 
-    # example of collate_fn
-    result_batch["data_object"] = torch.vstack(
-        [elem["data_object"] for elem in dataset_items]
+    # Проверяем, что у нас есть - data_object (синтетические данные) или спектрограммы
+    if "data_object" in dataset_items[0]:
+        # Оригинальная логика для синтетических данных
+        result_batch["data_object"] = torch.stack(
+            [item["data_object"] for item in dataset_items]
+        )
+    elif "spectrogram" in dataset_items[0]:
+        # Логика для спектрограмм
+        spectrograms = [item["spectrogram"] for item in dataset_items]
+
+        # Паддинг спектрограмм до одинакового размера по времени
+        if len(spectrograms) > 0:
+            max_time = max(spec.size(-1) for spec in spectrograms)
+
+            padded_specs = []
+            for spec in spectrograms:
+                current_time = spec.size(-1)
+
+                if current_time < max_time:
+                    # Паддинг по времени
+                    pad_time = max_time - current_time
+                    spec = torch.nn.functional.pad(
+                        spec, (0, pad_time), mode="constant", value=0
+                    )
+
+                padded_specs.append(spec)
+
+            result_batch["data_object"] = torch.stack(padded_specs, dim=0)
+
+    # Метки одинаковы в любом случае
+    result_batch["labels"] = torch.tensor(
+        [item["labels"] for item in dataset_items], dtype=torch.long
     )
-    result_batch["labels"] = torch.tensor([elem["labels"] for elem in dataset_items])
 
     return result_batch
