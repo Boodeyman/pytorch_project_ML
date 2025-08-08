@@ -247,6 +247,10 @@ class BaseTrainer:
             val_logs = self._evaluation_epoch(epoch, part, dataloader)
             logs.update(**{f"{part}_{name}": value for name, value in val_logs.items()})
 
+        # В конце _train_epoch, после val/test loop:
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
+
         return logs
 
     def _evaluation_epoch(self, epoch, part, dataloader):

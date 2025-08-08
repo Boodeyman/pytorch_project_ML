@@ -52,7 +52,9 @@ class STFTTransform(nn.Module):
         if spec_complex.is_complex():
             magnitude = torch.abs(spec_complex)
         else:
-            magnitude = torch.sqrt(spec_complex[..., 0] ** 2 + spec_complex[..., 1] ** 2)
+            magnitude = torch.sqrt(
+                spec_complex[..., 0] ** 2 + spec_complex[..., 1] ** 2
+            )
 
         # Логарифм магнитуды
         log_magnitude = torch.log(magnitude + 1e-8)

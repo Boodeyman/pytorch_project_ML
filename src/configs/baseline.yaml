@@ -33,6 +33,7 @@ trainer:
   early_stop: 8
   save_dir: "saved"
   seed: 42
+  max_grad_norm: 1.0
 
 writer:
   project_name: "asvspoof2019_antispoofing"

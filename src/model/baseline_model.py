@@ -108,7 +108,7 @@ class BaselineModel(nn.Module):
             # Преобразуем [B, 1024] -> [B, 1, 32, 32] для CNN
             batch_size = x.size(0)
             feature_size = x.size(1)
-            sqrt_size = int(feature_size ** 0.5)
+            sqrt_size = int(feature_size**0.5)
             if sqrt_size * sqrt_size != feature_size:
                 target_size = 32 * 32
                 if feature_size < target_size:

@@ -19,8 +19,8 @@ class ExampleMetric(BaseMetric):
         labels_np = labels.cpu().numpy()
 
         # Разделяем scores по классам
-        bonafide_mask = (labels_np == 0)
-        spoof_mask = (labels_np == 1)
+        bonafide_mask = labels_np == 0
+        spoof_mask = labels_np == 1
 
         bonafide_scores_filtered = bonafide_scores[bonafide_mask]
         spoof_scores_filtered = bonafide_scores[spoof_mask]
@@ -34,14 +34,17 @@ class ExampleMetric(BaseMetric):
     def compute_eer(self, bonafide_scores, spoof_scores):
         """Вычисление EER"""
         scores = np.concatenate([bonafide_scores, spoof_scores])
-        labels = np.concatenate([np.ones(len(bonafide_scores)), np.zeros(len(spoof_scores))])
+        # ИСПРАВЛЕНИЕ: bonafide=1, spoof=0 для ROC
+        labels = np.concatenate(
+            [np.ones(len(bonafide_scores)), np.zeros(len(spoof_scores))]
+        )
 
         fpr, tpr, _ = roc_curve(labels, scores, pos_label=1)
 
         try:
             eer = brentq(lambda x: 1.0 - x - interp1d(fpr, tpr)(x), 0.0, 1.0)
             return eer * 100
-        except:
+        except Exception:
             fnr = 1 - tpr
             eer_idx = np.nanargmin(np.absolute(fpr - fnr))
             eer = (fpr[eer_idx] + fnr[eer_idx]) / 2
