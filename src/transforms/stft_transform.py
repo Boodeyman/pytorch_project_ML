@@ -40,24 +40,25 @@ class STFTTransform(nn.Module):
         Args:
             waveform (Tensor): [B, T] или [T]
         Returns:
-            spectrogram (Tensor): [B, 1, F, T] логарифм магнитуды
+            spectrogram (Tensor): [B, F, T] БЕЗ лишнего канала!
         """
         if waveform.dim() == 1:
             waveform = waveform.unsqueeze(0)  # [1, T]
 
         # Получаем комплексную спектрограмму
-        spec_complex = self.spectrogram(waveform)  # [B, F, T, 2]
+        spec_complex = self.spectrogram(waveform)
 
-        # Вычисляем магнитуду
-        magnitude = torch.sqrt(spec_complex[..., 0] ** 2 + spec_complex[..., 1] ** 2)
+        # Проверяем тип данных
+        if spec_complex.is_complex():
+            magnitude = torch.abs(spec_complex)
+        else:
+            magnitude = torch.sqrt(spec_complex[..., 0] ** 2 + spec_complex[..., 1] ** 2)
 
         # Логарифм магнитуды
         log_magnitude = torch.log(magnitude + 1e-8)
 
-        # Добавляем канал для CNN: [B, 1, F, T]
-        log_magnitude = log_magnitude.unsqueeze(1)
-
-        return log_magnitude
+        # НЕ ДОБАВЛЯЕМ канал здесь! Модель сама добавит
+        return log_magnitude  # [B, F, T]
 
 
 class AudioNormalize(nn.Module):

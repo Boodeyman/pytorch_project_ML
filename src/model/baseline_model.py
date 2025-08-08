@@ -95,33 +95,30 @@ class BaselineModel(nn.Module):
     def forward(self, data_object, **batch):
         """
         Args:
-            data_object (Tensor): спектрограмма [B, 1, F, T] или вектор [B, features]
-        Returns:
-            dict: содержит logits для классификации
+            data_object (Tensor): спектрограмма [B, F, T] или вектор [B, features]
         """
         x = data_object
 
-        # Если входные данные 2D (синтетические), преобразуем в 4D
-        if x.dim() == 2:
+        # Если 3D спектрограмма [B, F, T], добавляем канал
+        if x.dim() == 3:
+            x = x.unsqueeze(1)  # [B, 1, F, T]
+
+        # Если 2D синтетические данные [B, features]
+        elif x.dim() == 2:
             # Преобразуем [B, 1024] -> [B, 1, 32, 32] для CNN
             batch_size = x.size(0)
             feature_size = x.size(1)
-
-            # Вычисляем размеры для квадратной формы
-            sqrt_size = int(feature_size**0.5)
+            sqrt_size = int(feature_size ** 0.5)
             if sqrt_size * sqrt_size != feature_size:
-                # Если не квадратное число, паддим или обрезаем
-                target_size = 32 * 32  # 1024
+                target_size = 32 * 32
                 if feature_size < target_size:
                     x = torch.nn.functional.pad(x, (0, target_size - feature_size))
                 else:
                     x = x[:, :target_size]
                 sqrt_size = 32
-
             x = x.view(batch_size, 1, sqrt_size, sqrt_size)
 
         # Остальной код без изменений
-        # Block 1
         x = self.conv1(x)
         x = self.pool1(x)
         x = self.bn_pool1(x)
