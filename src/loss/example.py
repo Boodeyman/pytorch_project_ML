@@ -1,32 +1,31 @@
+# В src/loss/example.py
 import torch
-from torch import nn
+import torch.nn as nn
+import torch.nn.functional as F
+import math
 
 
-class ExampleLoss(nn.Module):
-    """
-    Example of a loss function to use.
-    """
-
-    def __init__(self):
+class ASoftmaxLoss(nn.Module):
+    def __init__(self, in_feats=32, n_classes=2, m=4, s=30.0):
         super().__init__()
-        self.loss = nn.CrossEntropyLoss()
+        self.in_feats = in_feats
+        self.n_classes = n_classes
+        self.m = m
+        self.s = s
 
-    def forward(self, logits: torch.Tensor, labels: torch.Tensor, **batch):
-        """
-        Loss function calculation logic.
+        self.weight = nn.Parameter(torch.FloatTensor(n_classes, in_feats))
+        nn.init.xavier_uniform_(self.weight)
 
-        Note that loss function must return dict. It must contain a value for
-        the 'loss' key. If several losses are used, accumulate them into one 'loss'.
-        Intermediate losses can be returned with other loss names.
+    def forward(self, logits, labels, **batch):
+        # A-Softmax implementation
+        cosine = F.linear(F.normalize(logits), F.normalize(self.weight))
+        phi = cosine - self.m
 
-        For example, if you have loss = a_loss + 2 * b_loss. You can return dict
-        with 3 keys: 'loss', 'a_loss', 'b_loss'. You can log them individually inside
-        the writer. See config.writer.loss_names.
+        one_hot = torch.zeros(cosine.size()).to(cosine.device)
+        one_hot.scatter_(1, labels.view(-1, 1).long(), 1)
 
-        Args:
-            logits (Tensor): model output predictions.
-            labels (Tensor): ground-truth labels.
-        Returns:
-            losses (dict): dict containing calculated loss functions.
-        """
-        return {"loss": self.loss(logits, labels)}
+        output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
+        output *= self.s
+
+        loss = F.cross_entropy(output, labels)
+        return {"loss": loss}

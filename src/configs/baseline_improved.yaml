@@ -1,5 +1,5 @@
 defaults:
-  - model: baseline
+  - model: lcnn
   - writer: wandb
   - metrics: example
   - datasets: asvspoof_datasets
@@ -7,42 +7,35 @@ defaults:
   - transforms: asvspoof_transforms
   - _self_
 
-# Optimizer - based on STC paper recommendations
 optimizer:
   _target_: torch.optim.Adam
-  lr: 0.001      # Conservative learning rate
+  lr: 0.001  # Выше, как в статьях
   weight_decay: 0.0001
 
-# Learning rate scheduler
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.StepLR
-  gamma: 0.5
-  step_size: 10
+  gamma: 0.5   # Как в STC paper
+  step_size: 10  # Каждые 10 эпох
 
-# Loss function (Cross-Entropy as baseline, can switch to A-Softmax)
 loss_function:
   _target_: src.loss.ExampleLoss
 
-# Trainer settings
 trainer:
   log_step: 50
-  n_epochs: 10      # Enough for convergence
-  epoch_len: null   # Use full dataset
+  n_epochs: 50  # Больше эпох
+  epoch_len: null
   device_tensors: ["data_object", "labels"]
   resume_from: null
   device: auto
   override: False
-  monitor: "min val_EER"  # Minimize EER
+  monitor: "min val_EER"
   save_period: 5
-  early_stop: 20
+  early_stop: 15
   save_dir: "saved"
   seed: 42
-  max_grad_norm: 1.0  # Gradient clipping for stability
+  max_grad_norm: 1.0
 
-# W&B settings
 writer:
   project_name: "asvspoof2019_voice_antispoofing"
-  run_name: "lcnn_baseline"
+  run_name: "lcnn_asoftmax_improved"
   loss_names: ["loss"]
-  log_checkpoints: true
-  id_length: 8

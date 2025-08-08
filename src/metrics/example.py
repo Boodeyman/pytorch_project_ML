@@ -15,7 +15,7 @@ class ExampleMetric(BaseMetric):
         """Вычисляем EER (Equal Error Rate)"""
         # Получаем вероятности для класса bonafide (0)
         probs = torch.softmax(logits, dim=-1)
-        bonafide_scores = probs[:, 0].cpu().numpy()  # Вероятность bonafide
+        bonafide_scores = probs[:, 0].detach().cpu().numpy()  # Вероятность bonafide
         labels_np = labels.cpu().numpy()
 
         # Разделяем scores по классам

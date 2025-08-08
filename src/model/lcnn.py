@@ -1,0 +1,113 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class MFM(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int, stride: int = 1, padding: int = 0):
+        super(MFM, self).__init__()
+        self.out_channels = out_channels
+        self.conv = nn.Conv2d(in_channels, out_channels * 2, kernel_size, stride, padding)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.conv(x)
+        if x.shape[1] != self.out_channels * 2:
+            raise ValueError(f"Expected {self.out_channels * 2} channels after conv, got {x.shape[1]}")
+        a, b = torch.split(x, self.out_channels, dim=1)
+        return torch.max(a, b)
+
+
+class LCNN(nn.Module):
+    TARGET_T = 600
+
+    def __init__(self, num_classes: int = 2):
+        super(LCNN, self).__init__()
+        self.layer1 = nn.Sequential(
+            MFM(1, 32, kernel_size=5, stride=1, padding=2),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.layer2 = nn.Sequential(
+            MFM(32, 32, kernel_size=1),
+            nn.BatchNorm2d(32),
+            MFM(32, 48, kernel_size=3, padding=1),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.BatchNorm2d(48)
+        )
+        self.layer3 = nn.Sequential(
+            MFM(48, 48, kernel_size=1),
+            nn.BatchNorm2d(48),
+            MFM(48, 64, kernel_size=3, padding=1),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.layer4 = nn.Sequential(
+            MFM(64, 64, kernel_size=1),
+            nn.BatchNorm2d(64),
+            MFM(64, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            MFM(32, 32, kernel_size=1),
+            nn.BatchNorm2d(32),
+            MFM(32, 32, kernel_size=3, padding=1),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(32, 256)
+        self.bn_fc1 = nn.BatchNorm1d(256)
+        self.bn_fc2 = nn.BatchNorm1d(128)
+        self.dropout = nn.Dropout(0.75)
+        self.fc2 = nn.Linear(128, num_classes)
+
+    def forward(self, data_object, **batch):
+        """
+        Args:
+            data_object (Tensor): спектрограмма [B, F, T]
+        Returns:
+            dict: {"logits": logits}
+        """
+        x = data_object
+
+        # Ожидаем [B, F, T], добавляем канал -> [B, 1, F, T]
+        if x.dim() == 3:
+            x = x.unsqueeze(1)
+
+        # Проверяем размеры
+        if x.shape[1] != 1 or x.shape[2] != 257:
+            raise ValueError(f"Expected input shape (B, 1, 257, T), got {x.shape}")
+
+        B, C, F, T = x.shape
+
+        # Padding/trimming до TARGET_T
+        if T != self.TARGET_T:
+            if T < self.TARGET_T:
+                x = F.pad(x, (0, self.TARGET_T - T))
+            else:
+                x = x[:, :, :, :self.TARGET_T]
+
+        # LCNN forward pass
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.global_pool(x)
+        x = self.flatten(x)
+        x = self.fc1(x)
+        x = self.bn_fc1(x)
+        x = self.dropout(x)
+
+        # MFM на FC слое
+        a, b = x.chunk(2, dim=1)
+        x = torch.max(a, b)
+        x = self.bn_fc2(x)
+        logits = self.fc2(x)
+
+        return {"logits": logits}
+
+    def __str__(self):
+        """Model prints with the number of parameters."""
+        all_parameters = sum([p.numel() for p in self.parameters()])
+        trainable_parameters = sum([p.numel() for p in self.parameters() if p.requires_grad])
+
+        result_info = super().__str__()
+        result_info = result_info + f"\nAll parameters: {all_parameters}"
+        result_info = result_info + f"\nTrainable parameters: {trainable_parameters}"
+        return result_info
